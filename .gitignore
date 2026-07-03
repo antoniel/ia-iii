@@ -9,6 +9,8 @@ data/raw/
 data/interim/
 data/processed/
 data/cache/
+dados/processados/
+dados/cache/
 
 slides/*.pdf
 slides/_build/
