@@ -7,6 +7,7 @@
 \usepackage{booktabs}
 \usepackage{graphicx}
 \usepackage{tikz}
+\usetikzlibrary{positioning}
 \usepackage{amsmath}
 
 \usetheme{DCC}
@@ -14,7 +15,7 @@
 \setbeamertemplate{itemize items}[circle]
 \graphicspath{{imgs/}{./imgs/}}
 
-\author[Antoniel Magalhães]{\textbf{Antoniel Magalhães}}
+\author[Antoniel \& Isnan]{\textbf{Antoniel Magalhães} \and \textbf{Isnan}}
 \title{Determinantes de parto cesáreo na Bahia}
 \subtitle{Aprendizado supervisionado com SINASC · IA III}
 \institute{Universidade Federal da Bahia}
@@ -38,38 +39,67 @@
     \end{block}
 
     \begin{itemize}
-        \item Base: SINASC (DATASUS) — Declarações de Nascidos Vivos
-        \item Recorte: Bahia, 2022--2024
-        \item Alvo: \texttt{PARTO} (vaginal vs.\ cesárea)
+        \item Base: SINASC (DATASUS): Declarações de Nascidos Vivos
+        \item Recorte: Bahia, 2022 a 2024
+        \item Alvo: tipo de parto (vaginal vs.\ cesárea)
+        \item \textbf{Foco:} determinantes e variação territorial; \emph{não} predição clínica individual
     \end{itemize}
+\end{frame}
+
+\begin{frame}{Objetivo analítico}
+                \begin{enumerate}
+                    \item Treinar e validar um classificador
+                    \item Extrair importância de variáveis
+                    \item Comparar padrões entre municípios
+                    \item Confrontar com literatura epidemiológica
+                \end{enumerate}
+
+    \vspace{0.4em}
+\end{frame}
+
+\section{Jornada metodológica}
+
+\begin{frame}{Como chegamos ao modelo}
+    \textbf{Abordagem iterativa:} cada etapa informa a próxima.
+
+    \vspace{0.4em}
+    \begin{enumerate}
+        \item Definir pergunta, recorte geográfico e temporal
+        \item Unificar e limpar a base; excluir registros inválidos
+        \item Remover variáveis de vazamento e controle administrativo
+        \item Selecionar determinantes plausíveis, \textbf{poucas no início}
+        \item Treinar Random Forest, medir desempenho, interpretar importâncias
+        \item Iterar: ampliar ou podar variáveis; comparar se melhorou ou piorou
+        \item Validar achados com literatura e variar por município
+    \end{enumerate}
 \end{frame}
 
 \section{Pré-processamento}
 
-\begin{frame}{Pré-processamento — fontes}
-    \textbf{Três arquivos raw} (\texttt{data/raw/}), um por ano:
+\begin{frame}{Pré-processamento: fontes}
+    \textbf{Três anos} de declarações de nascidos vivos na Bahia:
 
     \vspace{0.6em}
     \begin{table}
         \centering
-        \begin{tabular}{lrl}
+        \begin{tabular}{lr}
             \toprule
-            Arquivo & Registros & Ano \\
+            Ano & Registros \\
             \midrule
-            \texttt{sinasc\_ba\_2022.parquet} & 173.824 & 2022 \\
-            \texttt{sinasc\_ba\_2023.parquet} & 170.314 & 2023 \\
-            \texttt{sinasc\_ba\_2024.parquet} & 160.002 & 2024 \\
+            2022 & 173.824 \\
+            2023 & 170.314 \\
+            2024 & 160.002 \\
             \midrule
-            \textbf{Total (3 datasources)} & \textbf{504.140} & \\
+            \textbf{Total} & \textbf{504.140} \\
             \bottomrule
         \end{tabular}
     \end{table}
 
     \vspace{0.4em}
-    {\small Pipeline: \texttt{ml/preprocess.py} $\rightarrow$ \texttt{sinasc\_ba\_unified.parquet}}
+    {\small Fonte: DATASUS - unificação dos três anos em uma única base.}
 \end{frame}
 
-\begin{frame}{Pré-processamento — rótulo \texttt{PARTO}}
+\begin{frame}{Pré-processamento: rótulo do parto}
     \textbf{Primeira limpeza:} manter apenas classes válidas do alvo.
 
     \vspace{0.4em}
@@ -77,17 +107,17 @@
         \begin{column}{0.48\textwidth}
             \textbf{Códigos SINASC}
             \begin{itemize}
-                \item \texttt{1} — parto vaginal
-                \item \texttt{2} — cesárea
-                \item \texttt{9} — ignorado
-                \item vazio — registro sem rótulo
+                \item \texttt{1}: parto vaginal
+                \item \texttt{2}: cesárea
+                \item \texttt{9}: ignorado
+                \item vazio: registro sem rótulo
             \end{itemize}
         \end{column}
         \begin{column}{0.48\textwidth}
-            \textbf{Regra (\texttt{filter\_valid\_parto})}
+            \textbf{Critério de seleção}
             \begin{itemize}
-                \item \textcolor{green!50!black}{Manter} \texttt{1} e \texttt{2}
-                \item \textcolor{red!70!black}{Remover} \texttt{9}, vazios e demais inválidos
+                \item \textcolor{green!50!black}{Manter} vaginal e cesárea
+                \item \textcolor{red!70!black}{Remover} ignorados, vazios e demais inválidos
             \end{itemize}
         \end{column}
     \end{columns}
@@ -110,7 +140,7 @@
     \end{table}
 \end{frame}
 
-\begin{frame}{Pré-processamento — base unificada}
+\begin{frame}{Pré-processamento: base unificada}
     \begin{block}{Após unificação e limpeza de rótulos}
         \centering
         \Large 503.785 registros utilizáveis
@@ -123,19 +153,278 @@
             \toprule
             Etapa & Registros \\
             \midrule
-            Raw (3 anos) & 504.140 \\
+            Três anos reunidos & 504.140 \\
             Removidos (ignorados + vazios) & $-$355 (0{,}07\%) \\
             \midrule
-            \textbf{Base unificada} & \textbf{503.785} \\
+            \textbf{Base para modelagem} & \textbf{503.785} \\
             \bottomrule
         \end{tabular}
     \end{table}
 
     \vspace{0.4em}
     \begin{itemize}
-        \item Coluna \texttt{y\_cesarea}: \texttt{1} = cesárea, \texttt{0} = vaginal
+        \item Desfecho binário: cesárea vs.\ vaginal
         \item Balanceamento: $\approx$ 50{,}1\% cesárea · 49{,}9\% vaginal
     \end{itemize}
+\end{frame}
+
+\begin{frame}{Pré-processamento: o que excluímos}
+    \textbf{Antes da modelagem}, retiramos campos que não são relevantes para o problema:
+
+    \vspace{0.4em}
+    \begin{columns}[T]
+        \begin{column}{0.32\textwidth}
+            \textbf{Controle administrativo}
+            \begin{itemize}
+                \item Identificadores de lote e registro
+                \item Datas de recebimento no sistema
+            \end{itemize}
+        \end{column}
+        \begin{column}{0.32\textwidth}
+            \textbf{Vazamento de informação}
+            \begin{itemize}
+                \item Peso e Apgar ao nascer
+                \item Indução e momento da cesárea
+            \end{itemize}
+        \end{column}
+        \begin{column}{0.32\textwidth}
+            \textbf{Datas auxiliares}
+            \begin{itemize}
+                \item Data/hora do nascimento
+                \item DUM, data de preenchimento
+            \end{itemize}
+        \end{column}
+    \end{columns}
+
+    \vspace{0.6em}
+    {\small Critério: manter apenas o que poderia ser conhecido \emph{antes} do desfecho obstétrico.}
+\end{frame}
+
+\section{Modelagem}
+
+\begin{frame}{Primeiro conjunto de variáveis (v0)}
+    \textbf{Ponto de partida deliberadamente simplificado:} quatro determinantes plausíveis.
+
+    \vspace{0.4em}
+    \begin{table}
+        \centering
+        \small
+        \begin{tabular}{lll}
+            \toprule
+            Variável (SINASC) & Tipo & Hipótese \\
+            \midrule
+            Idade da mãe & numérica & idade avançada $\rightarrow$ mais cesárea \\
+            Cesáreas anteriores & numérica & histórico obstétrico \\
+            Consultas de pré-natal & numérica & cobertura assistencial \\
+            Município de residência & categórica & efeito territorial \\
+            \bottomrule
+        \end{tabular}
+    \end{table}
+
+    \vspace{0.3em}
+    \begin{itemize}
+        \item Baseline (v0): AUC 0{,}694 · hold-out 80/20 · 421 \emph{features} (município one-hot)
+        \item Iterações v1--v6 e ablations em \texttt{experiments/experiments.jsonl}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Iteração de variáveis (v0 $\rightarrow$ v6)}
+    \small
+    \begin{table}
+        \centering
+        \begin{tabular}{clp{5.8cm}}
+            \toprule
+            Versão & Bloco adicionado & Variáveis (SINASC) \\
+            \midrule
+            v1 & Obstétrico & \texttt{PARIDADE}, \texttt{GRAVIDEZ} \\
+            v2 & Perfil social da mãe & \texttt{ESCMAEAGR1}, \texttt{RACACORMAE} \\
+            v3 & Gestação & \texttt{SEMAGESTAC} (não \texttt{GESTACAO}) \\
+            v4 & Pré-natal refinado & \texttt{KOTELCHUCK} \emph{no lugar de} \texttt{CONSPRENAT} \\
+            v5 & Assistência ao parto & \texttt{TPAPRESENT}, \texttt{TPNASCASSI} \\
+            v6 & Território / local & \texttt{LOCNASC}, \texttt{CODESTAB} (1022 CNES) \\
+            \bottomrule
+        \end{tabular}
+    \end{table}
+
+    \vspace{0.4em}
+    \begin{itemize}
+        \item Critério: só entra variável com hipótese epidemiológica plausível
+        \item Comparamos AUC/F1 a cada passo; anotamos \emph{por que} entrou ou saiu
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Pipeline}
+    \begin{center}
+        \begin{tikzpicture}[
+            node distance=0.45cm and 0.25cm,
+            box/.style={draw, rounded corners, minimum height=0.7cm, minimum width=1.55cm, align=center, font=\scriptsize}
+        ]
+            \node[box] (raw) {Dados\\SINASC};
+            \node[box, right=of raw] (prep) {Limpeza};
+            \node[box, right=of prep] (feat) {Variáveis};
+            \node[box, right=of feat] (enc) {Encoding};
+            \node[box, right=of enc] (split) {80/20};
+            \node[box, right=of split] (train) {Random\\Forest};
+            \node[box, right=of train] (val) {Métricas};
+
+            \draw[->] (raw) -- (prep);
+            \draw[->] (prep) -- (feat);
+            \draw[->] (feat) -- (enc);
+            \draw[->] (enc) -- (split);
+            \draw[->] (split) -- (train);
+            \draw[->] (train) -- (val);
+        \end{tikzpicture}
+    \end{center}
+
+    \vspace{0.5em}
+    \begin{columns}[T]
+        \begin{column}{0.48\textwidth}
+            \textbf{Encoding (\texttt{ml/encoding.py})}
+            \begin{itemize}
+                \item Baixa cardinalidade: one-hot
+                \item Município e CNES: \textbf{target encoding} (taxa de cesárea suavizada, fit só no treino)
+                \item 1.435 $\rightarrow$ 53 \emph{features} no modelo final
+            \end{itemize}
+        \end{column}
+        \begin{column}{0.48\textwidth}
+            \textbf{Validação}
+            \begin{itemize}
+                \item Hold-out estratificado (80/20)
+                \item 403.028 treino · 100.757 teste
+                \item CV 5-fold no v0 (AUC 0{,}691 $\pm$ 0{,}001)
+                \item 9 experimentos em \texttt{experiments.jsonl}
+            \end{itemize}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Target encoding territorial}
+    \textbf{Problema:} município (418) e CNES (1.022) estouram one-hot --- importância diluída.
+
+    \vspace{0.4em}
+    \textbf{Solução:} substituir por taxa histórica de cesárea no treino (smoothing $m=10$):
+    \[
+        \hat{p}_c = \frac{n_c \cdot \bar{y}_c + m \cdot \bar{y}}{n_c + m}
+    \]
+
+    \vspace{0.4em}
+    \begin{columns}[T]
+        \begin{column}{0.48\textwidth}
+            \textbf{Interpretação}
+            \begin{itemize}
+                \item Efeito \textbf{contextual/ecológico}, não causal individual
+                \item CNES: prática da unidade onde pariu
+                \item Município: ambiente territorial mais amplo
+            \end{itemize}
+        \end{column}
+        \begin{column}{0.48\textwidth}
+            \textbf{Cuidados}
+            \begin{itemize}
+                \item Fit apenas no treino (sem vazamento)
+                \item 224 CNES com taxa 100\% (0{,}4\% dos nascimentos) --- pode inflar AUC
+                \item Não confundir com ``hospital decide sozinho''
+            \end{itemize}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+\section{Resultados}
+
+\begin{frame}{Evolução do desempenho (hold-out 20\%)}
+    \begin{table}
+        \centering
+        \scriptsize
+        \begin{tabular}{llrrrr}
+            \toprule
+            Exp. & Versão & Feat. & AUC-ROC & F1 & Acurácia \\
+            \midrule
+            v0 & baseline (4 vars.) & 421 & 0{,}694 & 0{,}624 & 0{,}642 \\
+            v2 & + obstétrico / social & 447 & 0{,}741 & 0{,}673 & 0{,}682 \\
+            v4 & + gestação / Kotelchuck & 453 & 0{,}748 & 0{,}678 & 0{,}686 \\
+            v5 & + assistência & 464 & 0{,}849 & 0{,}762 & 0{,}761 \\
+            v6 & + território (one-hot) & 1.435 & 0{,}878 & 0{,}793 & 0{,}792 \\
+            ablation & v6 sem município & 1.017 & 0{,}872 & 0{,}790 & 0{,}788 \\
+            \textbf{atual} & \textbf{v6 + target encode} & \textbf{53} & \textbf{0{,}883} & \textbf{0{,}800} & \textbf{0{,}797} \\
+            \bottomrule
+        \end{tabular}
+    \end{table}
+
+    \vspace{0.3em}
+    \begin{itemize}
+        \item Maior salto clínico-assistencial: v4 $\rightarrow$ v5 (\texttt{TPNASCASSI})
+        \item Target encoding: +0{,}006 AUC vs.\ v6 one-hot, com 27$\times$ menos colunas
+        \item Métricas altas \textbf{não} são o produto; servem de suporte metodológico
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Importâncias --- modelo atual (target encoding)}
+    \textbf{Random Forest · v6 · 13 variáveis · 53 \emph{features}}
+
+    \vspace{0.4em}
+    \begin{table}
+        \centering
+        \small
+        \begin{tabular}{lr}
+            \toprule
+            Determinante & Importância relativa \\
+            \midrule
+            Taxa de cesárea do estabelecimento (CNES) & 23{,}0\% \\
+            Idade da mãe & 14{,}5\% \\
+            Taxa de cesárea do município de residência & 13{,}4\% \\
+            Cesáreas anteriores & 9{,}7\% \\
+            Profissional: enfermeiro/obstetra (\texttt{TPNASCASSI}) & 9{,}3\% \\
+            \bottomrule
+        \end{tabular}
+    \end{table}
+
+    \vspace{0.4em}
+    \begin{itemize}
+        \item Com one-hot, CNES e município \textbf{não} apareciam no top --- encoding tornou o efeito territorial legível
+        \item Idade, histórico obstétrico: coerentes com literatura
+        \item CNES $>$ município: unidade de parto pesa mais que o território agregado
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{O que aprendemos nas iterações}
+    \begin{columns}[T]
+        \begin{column}{0.48\textwidth}
+            \textbf{Ganhos plausíveis}
+            \begin{itemize}
+                \item Paridade, escolaridade, gestação (v1--v4)
+                \item Kotelchuck $>$ contagem bruta de consultas
+                \item Target encoding: territorial legível e modelo enxuto
+            \end{itemize}
+        \end{column}
+        \begin{column}{0.48\textwidth}
+            \textbf{Pontos de atenção}
+            \begin{itemize}
+                \item \texttt{TPNASCASSI} infla AUC --- variável de processo?
+                \item Taxa do CNES pode capturar unidades extremas (100\% cesárea)
+                \item Associação $\neq$ causalidade individual
+            \end{itemize}
+        \end{column}
+    \end{columns}
+
+    \vspace{0.5em}
+    \begin{alertblock}{Ablation município (one-hot v6)}
+        Remover \texttt{CODMUNRES}: $-$418 features, AUC cai apenas 0{,}006 --- sinal municipal redundante com CNES.
+    \end{alertblock}
+\end{frame}
+
+\section{Próximos passos}
+
+\begin{frame}{Continuidade da jornada}
+    \begin{enumerate}
+        \item \textbf{Ranquear municípios:} taxa observada vs.\ importância no modelo
+        \item \textbf{Revisar CNES extremos:} cap de taxa ou filtro de volume mínimo
+        \item \textbf{Separar bloco clínico} (sem CNES/\texttt{TPNASCASSI}) vs.\ bloco assistencial
+        \item \textbf{Permutation importance:} robustez das importâncias globais
+        \item \textbf{Regressão logística:} odds ratios como complemento interpretável
+        \item \textbf{Grupo de Robson} (\texttt{TPROBSON}): estratificação separada
+    \end{enumerate}
+
+    \vspace{0.4em}
+    {\small 9 experimentos documentados (v0--v6 + ablations); narrativa: \emph{por que} cada variável entrou ou saiu.}
 \end{frame}
 
 \begin{frame}{Obrigado}

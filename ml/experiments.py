@@ -29,6 +29,10 @@ class ExperimentRecord:
     n_test: int
     n_features: int
     model_path: str
+    validation: str = "holdout"
+    holdout_metrics: dict[str, float] | None = None
+    cv_metrics_std: dict[str, float] | None = None
+    cv_fold_metrics: list[dict[str, float]] | None = None
 
 
 def _read_records(path: Path) -> list[dict[str, Any]]:
@@ -95,6 +99,12 @@ def _serialize_run_config(config: Any) -> dict[str, Any]:
     return serialized
 
 
+def _primary_metrics(result: ValidateResult) -> dict[str, float]:
+    if result.cv is not None:
+        return result.cv.metrics_mean
+    return result.metrics
+
+
 def log_experiment(
     run_config: Any,
     result: ValidateResult,
@@ -108,20 +118,22 @@ def log_experiment(
     metric: str = PRIMARY_METRIC,
 ) -> ExperimentRecord:
     existing = _read_records(path)
+    primary = _primary_metrics(result)
     previous_best = _best_record(existing, metric)
-    delta = _delta_vs_best(result.metrics, previous_best)
+    delta = _delta_vs_best(primary, previous_best)
     is_best = (
         previous_best is None
-        or result.metrics[metric] > previous_best["metrics"][metric]
+        or primary[metric] > previous_best["metrics"][metric]
     )
 
+    cv = result.cv
     record = ExperimentRecord(
         id=_next_id(path),
         timestamp=datetime.now(UTC).isoformat(timespec="seconds"),
         tag=tag,
         notes=notes,
         primary_metric=metric,
-        metrics={name: round(value, 4) for name, value in result.metrics.items()},
+        metrics={name: round(value, 4) for name, value in primary.items()},
         delta_vs_best=delta,
         is_best=is_best,
         config=_serialize_run_config(run_config),
@@ -132,6 +144,23 @@ def log_experiment(
         n_test=n_test,
         n_features=n_features,
         model_path=str(run_config.model_path),
+        validation="cv+holdout" if cv is not None else "holdout",
+        holdout_metrics={
+            name: round(value, 4) for name, value in result.metrics.items()
+        }
+        if cv is not None
+        else None,
+        cv_metrics_std={
+            name: round(value, 4) for name, value in cv.metrics_std.items()
+        }
+        if cv is not None
+        else None,
+        cv_fold_metrics=[
+            {name: round(value, 4) for name, value in fold.items()}
+            for fold in cv.fold_metrics
+        ]
+        if cv is not None
+        else None,
     )
 
     if is_best and previous_best is not None:
@@ -158,8 +187,11 @@ def format_log_summary(record: ExperimentRecord, path: Path) -> str:
     value = record.metrics[metric]
     lines = [
         f"Experiment {record.id} logged → {path}",
-        f"   {metric}={value:.3f}",
+        f"   {metric}={value:.3f} ({record.validation})",
     ]
+    if record.cv_metrics_std is not None:
+        std = record.cv_metrics_std[metric]
+        lines.append(f"   cv {metric} std={std:.3f}")
     if record.tag:
         lines.append(f"   tag: {record.tag}")
     if record.is_best:
@@ -190,9 +222,10 @@ def _cmd_list(args: argparse.Namespace) -> None:
         best_mark = " ★" if record.get("is_best") else ""
         tag = f" [{record['tag']}]" if record.get("tag") else ""
         notes = f" — {record['notes']}" if record.get("notes") else ""
+        validation = record.get("validation", "holdout")
         print(
             f"{record['id']}{best_mark}{tag}: "
-            f"{metric}={record['metrics'][metric]:.3f}{notes}"
+            f"{metric}={record['metrics'][metric]:.3f} ({validation}){notes}"
         )
 
 

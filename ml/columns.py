@@ -43,7 +43,9 @@ class Col(StrEnum):
     SERIE_ESCOLAR_MAE = "serie_escolar_mae"
     SEXO_RECEM_NASCIDO = "sexo_recem_nascido"
     TIPO_APRESENTACAO_FETAL = "tipo_apresentacao_fetal"
-    TIPO_DOCUMENTO_RESPONSAVEL_PREENCHIMENTO = "tipo_documento_responsavel_preenchimento"
+    TIPO_DOCUMENTO_RESPONSAVEL_PREENCHIMENTO = (
+        "tipo_documento_responsavel_preenchimento"
+    )
     TIPO_FUNCAO_RESPONSAVEL_PREENCHIMENTO = "tipo_funcao_responsavel_preenchimento"
     TIPO_METODO_ESTIMATIVA_GESTACIONAL = "tipo_metodo_estimativa_gestacional"
     TIPO_PROFISSIONAL_ASSISTENCIA_PARTO = "tipo_profissional_assistencia_parto"
@@ -153,7 +155,63 @@ FEATURES_V0: tuple[Col, ...] = (
     Col.CODIGO_MUNICIPIO_RESIDENCIA,
 )
 
-CATEGORICAL_FEATURES: frozenset[Col] = frozenset({Col.CODIGO_MUNICIPIO_RESIDENCIA})
+FEATURES_V1: tuple[Col, ...] = FEATURES_V0 + (
+    Col.PARIDADE,
+    Col.TIPO_GRAVIDEZ,
+)
+
+FEATURES_V2: tuple[Col, ...] = FEATURES_V1 + (
+    Col.ESCOLARIDADE_MAE_AGREGADA,
+    Col.RACA_COR_MAE,
+)
+
+FEATURES_V3: tuple[Col, ...] = FEATURES_V2 + (Col.SEMANAS_GESTACAO,)
+
+FEATURES_V4: tuple[Col, ...] = tuple(
+    col
+    for col in FEATURES_V3
+    if col is not Col.NUMERO_CONSULTAS_PRENATAL
+) + (Col.INDICE_KOTELCHUCK_PRENATAL,)
+
+FEATURES_V5: tuple[Col, ...] = FEATURES_V4 + (
+    Col.TIPO_APRESENTACAO_FETAL,
+    Col.TIPO_PROFISSIONAL_ASSISTENCIA_PARTO,
+)
+
+FEATURES_V6: tuple[Col, ...] = FEATURES_V5 + (
+    Col.LOCAL_NASCIMENTO,
+    Col.CODIGO_ESTABELECIMENTO_SAUDE,
+)
+
+FEATURES_V6_SEM_MUNICIPIO: tuple[Col, ...] = tuple(
+    col for col in FEATURES_V6 if col is not Col.CODIGO_MUNICIPIO_RESIDENCIA
+)
+
+CATEGORICAL_FEATURES: frozenset[Col] = frozenset(
+    {
+        Col.CODIGO_MUNICIPIO_RESIDENCIA,
+        Col.TIPO_GRAVIDEZ,
+        Col.ESCOLARIDADE_MAE_AGREGADA,
+        Col.RACA_COR_MAE,
+        Col.INDICE_KOTELCHUCK_PRENATAL,
+        Col.TIPO_APRESENTACAO_FETAL,
+        Col.TIPO_PROFISSIONAL_ASSISTENCIA_PARTO,
+        Col.LOCAL_NASCIMENTO,
+        Col.CODIGO_ESTABELECIMENTO_SAUDE,
+    }
+)
+
+# Alta cardinalidade → taxa de cesárea suavizada (target encoding), não one-hot.
+TARGET_ENCODE_FEATURES: frozenset[Col] = frozenset(
+    {
+        Col.CODIGO_MUNICIPIO_RESIDENCIA,
+        Col.CODIGO_ESTABELECIMENTO_SAUDE,
+    }
+)
+
+
+def target_encode_column_name(col: Col) -> str:
+    return f"{col.value}_taxa_cesarea"
 
 
 def col_names(columns: Sequence[Col]) -> tuple[str, ...]:
