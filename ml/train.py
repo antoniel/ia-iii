@@ -17,8 +17,11 @@ class TrainConfig:
     )
     feature_columns: tuple[Col, ...] = FEATURES_V0
     random_state: int = 42
-    n_estimators: int = 100
-    max_depth: int | None = None
+    n_estimators: int = 250
+    max_depth: int | None = 30
+    min_samples_split: int = 20
+    min_samples_leaf: int = 2
+    max_features: str | float = 0.3
     n_jobs: int = -2
 
 
@@ -30,6 +33,9 @@ def train_random_forest(
     model = RandomForestClassifier(
         n_estimators=config.n_estimators,
         max_depth=config.max_depth,
+        min_samples_split=config.min_samples_split,
+        min_samples_leaf=config.min_samples_leaf,
+        max_features=config.max_features,
         random_state=config.random_state,
         n_jobs=config.n_jobs,
         class_weight="balanced",

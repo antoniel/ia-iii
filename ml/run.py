@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from ml.columns import FEATURES_V0, FEATURES_V6, Col
+from ml.columns import FEATURES_V0, FEATURES_V8, Col
 from ml.dataset import build_xy, load_features, split_train_test
 from ml.experiments import format_log_summary, log_experiment
 from ml.feature_engineering import run_features
@@ -23,10 +23,13 @@ class RunConfig:
     feature_columns: tuple[Col, ...] = FEATURES_V0
     test_size: float = 0.2
     random_state: int = 42
-    n_estimators: int = 100
-    max_depth: int | None = None
+    n_estimators: int = 250
+    max_depth: int | None = 30
+    min_samples_split: int = 20
+    min_samples_leaf: int = 2
+    max_features: str | float = 0.3
     n_jobs: int = -1
-    n_folds: int = 0  # TODO: Habilitar cross-validation
+    n_folds: int = 0
     log_experiments: bool = True
     experiments_path: Path = field(
         default_factory=lambda: Path("experiments/experiments.jsonl")
@@ -49,6 +52,9 @@ def run(config: RunConfig | None = None):
         random_state=cfg.random_state,
         n_estimators=cfg.n_estimators,
         max_depth=cfg.max_depth,
+        min_samples_split=cfg.min_samples_split,
+        min_samples_leaf=cfg.min_samples_leaf,
+        max_features=cfg.max_features,
         n_jobs=cfg.n_jobs,
     )
 
@@ -95,10 +101,13 @@ def run(config: RunConfig | None = None):
 
 def main() -> None:
     cfg = RunConfig(
-        feature_columns=FEATURES_V6,
-        model_path=Path("data/processed/model_rf_v6_target_encode.joblib"),
-        experiment_tag="v6-target-encode",
-        experiment_notes="v6 com target encoding (taxa cesárea suavizada) para município e CNES",
+        feature_columns=FEATURES_V8,
+        model_path=Path("data/processed/model_rf_v8.joblib"),
+        experiment_tag="v8",
+        experiment_notes=(
+            "v8: +partos vaginais anteriores, mesmo município nasc/residência, "
+            "estado civil, sexo RN, raça/cor RN (sem TPNASCASSI)"
+        ),
     )
     _, result, experiment = run(cfg)
     print(f"Model OK → {cfg.model_path}")

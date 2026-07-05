@@ -46,35 +46,34 @@
     \end{itemize}
 \end{frame}
 
-\begin{frame}{Objetivo analítico}
-                \begin{enumerate}
-                    \item Treinar e validar um classificador
-                    \item Extrair importância de variáveis
-                    \item Comparar padrões entre municípios
-                    \item Confrontar com literatura epidemiológica
-                \end{enumerate}
-
-    \vspace{0.4em}
-\end{frame}
-
-\section{Jornada metodológica}
-
-\begin{frame}{Como chegamos ao modelo}
-    \textbf{Abordagem iterativa:} cada etapa informa a próxima.
-
-    \vspace{0.4em}
+\begin{frame}{Objetivos}
     \begin{enumerate}
-        \item Definir pergunta, recorte geográfico e temporal
-        \item Unificar e limpar a base; excluir registros inválidos
-        \item Remover variáveis de vazamento e controle administrativo
-        \item Selecionar determinantes plausíveis, \textbf{poucas no início}
-        \item Treinar Random Forest, medir desempenho, interpretar importâncias
-        \item Iterar: ampliar ou podar variáveis; comparar se melhorou ou piorou
-        \item Validar achados com literatura e variar por município
+        \item Desenvolver e validar um modelo de classificação supervisionada
+        \item Identificar a importância relativa dos determinantes do parto cesáreo
+        \item Descrever a variação territorial entre municípios
+        \item Confrontar os achados com a literatura epidemiológica
     \end{enumerate}
 \end{frame}
 
-\section{Pré-processamento}
+\section{Construção do modelo}
+
+\begin{frame}{Metodologia}
+    \textbf{Estrutura da apresentação:}
+    \begin{enumerate}
+        \item \textbf{Construção do modelo}: seleção de dados, variáveis e decisões analíticas
+        \item \textbf{Resultados}: desempenho, importância relativa das variáveis e confronto com a literatura
+    \end{enumerate}
+
+    \vspace{0.5em}
+    \textbf{Estratégia de modelagem:}
+    \begin{itemize}
+        \item Partir de um conjunto reduzido de determinantes e expandir por blocos temáticos
+        \item Avaliar o ganho discriminativo a cada etapa e justificar inclusão ou exclusão de variáveis
+        \item Excluir indicadores de processo assistencial quando o objetivo é interpretar determinantes anteparto
+    \end{itemize}
+\end{frame}
+
+\subsection{Pré-processamento}
 
 \begin{frame}{Pré-processamento: fontes}
     \textbf{Três anos} de declarações de nascidos vivos na Bahia:
@@ -105,12 +104,12 @@
     \vspace{0.4em}
     \begin{columns}[T]
         \begin{column}{0.48\textwidth}
-            \textbf{Códigos SINASC}
+            \textbf{Códigos do desfecho}
             \begin{itemize}
-                \item \texttt{1}: parto vaginal
-                \item \texttt{2}: cesárea
-                \item \texttt{9}: ignorado
-                \item vazio: registro sem rótulo
+                \item 1: parto vaginal
+                \item 2: cesárea
+                \item 9: ignorado
+                \item em branco: sem informação
             \end{itemize}
         \end{column}
         \begin{column}{0.48\textwidth}
@@ -200,10 +199,10 @@
     {\small Critério: manter apenas o que poderia ser conhecido \emph{antes} do desfecho obstétrico.}
 \end{frame}
 
-\section{Modelagem}
+\subsection{Seleção de variáveis}
 
-\begin{frame}{Primeiro conjunto de variáveis (v0)}
-    \textbf{Ponto de partida deliberadamente simplificado:} quatro determinantes plausíveis.
+\begin{frame}{Variáveis iniciais}
+    \textbf{Ponto de partida:} quatro determinantes epidemiologicamente plausíveis.
 
     \vspace{0.4em}
     \begin{table}
@@ -211,9 +210,9 @@
         \small
         \begin{tabular}{lll}
             \toprule
-            Variável (SINASC) & Tipo & Hipótese \\
+            Variável & Tipo & Hipótese \\
             \midrule
-            Idade da mãe & numérica & idade avançada $\rightarrow$ mais cesárea \\
+            Idade da mãe & numérica & idade avançada associada a maior risco de cesárea \\
             Cesáreas anteriores & numérica & histórico obstétrico \\
             Consultas de pré-natal & numérica & cobertura assistencial \\
             Município de residência & categórica & efeito territorial \\
@@ -223,37 +222,38 @@
 
     \vspace{0.3em}
     \begin{itemize}
-        \item Baseline (v0): AUC 0{,}694 · hold-out 80/20 · 421 \emph{features} (município one-hot)
-        \item Iterações v1--v6 e ablations em \texttt{experiments/experiments.jsonl}
+        \item Modelo inicial: AUC 0{,}694 (partição hold-out 80/20)
+        \item Expansão progressiva por blocos temáticos, com comparação de métricas a cada etapa
     \end{itemize}
 \end{frame}
 
-\begin{frame}{Iteração de variáveis (v0 $\rightarrow$ v6)}
-    \small
+\begin{frame}{Expansão do conjunto de variáveis}
+    \scriptsize
     \begin{table}
         \centering
-        \begin{tabular}{clp{5.8cm}}
+        \begin{tabular}{clp{6.2cm}}
             \toprule
-            Versão & Bloco adicionado & Variáveis (SINASC) \\
+            Etapa & Dimensão analítica & Variáveis incorporadas \\
             \midrule
-            v1 & Obstétrico & \texttt{PARIDADE}, \texttt{GRAVIDEZ} \\
-            v2 & Perfil social da mãe & \texttt{ESCMAEAGR1}, \texttt{RACACORMAE} \\
-            v3 & Gestação & \texttt{SEMAGESTAC} (não \texttt{GESTACAO}) \\
-            v4 & Pré-natal refinado & \texttt{KOTELCHUCK} \emph{no lugar de} \texttt{CONSPRENAT} \\
-            v5 & Assistência ao parto & \texttt{TPAPRESENT}, \texttt{TPNASCASSI} \\
-            v6 & Território / local & \texttt{LOCNASC}, \texttt{CODESTAB} (1022 CNES) \\
+            1 & Obstétrica & paridade, tipo de gravidez \\
+            2 & Perfil social da mãe & escolaridade agregada, raça/cor \\
+            3 & Gestação e pré-natal & idade gestacional, índice de Kotelchuck \\
+            4 & Assistência ao parto & apresentação fetal, profissional assistente \\
+            5 & Territorialidade & local do nascimento, estabelecimento de saúde \\
+            6 & Estratificação clínica & Classificação de Robson \\
+            7 & Modelo final & partos vaginais anteriores, estado civil, sexo e raça/cor do recém-nascido, nascimento no município de residência \\
             \bottomrule
         \end{tabular}
     \end{table}
 
-    \vspace{0.4em}
+    \vspace{0.3em}
     \begin{itemize}
-        \item Critério: só entra variável com hipótese epidemiológica plausível
-        \item Comparamos AUC/F1 a cada passo; anotamos \emph{por que} entrou ou saiu
+        \item Critério de inclusão: plausibilidade epidemiológica e ausência de vazamento de informação pós-parto
+        \item Modelo final: 18 variáveis originais, codificadas em 53 atributos para o classificador
     \end{itemize}
 \end{frame}
 
-\begin{frame}{Pipeline}
+\begin{frame}{Fluxo analítico}
     \begin{center}
         \begin{tikzpicture}[
             node distance=0.45cm and 0.25cm,
@@ -262,7 +262,7 @@
             \node[box] (raw) {Dados\\SINASC};
             \node[box, right=of raw] (prep) {Limpeza};
             \node[box, right=of prep] (feat) {Variáveis};
-            \node[box, right=of feat] (enc) {Encoding};
+            \node[box, right=of feat] (enc) {Codificação};
             \node[box, right=of enc] (split) {80/20};
             \node[box, right=of split] (train) {Random\\Forest};
             \node[box, right=of train] (val) {Métricas};
@@ -279,50 +279,70 @@
     \vspace{0.5em}
     \begin{columns}[T]
         \begin{column}{0.48\textwidth}
-            \textbf{Encoding (\texttt{ml/encoding.py})}
+            \textbf{Codificação de variáveis}
             \begin{itemize}
-                \item Baixa cardinalidade: one-hot
-                \item Município e CNES: \textbf{target encoding} (taxa de cesárea suavizada, fit só no treino)
-                \item 1.435 $\rightarrow$ 53 \emph{features} no modelo final
+                \item Variáveis nominais de baixa cardinalidade: codificação dummy
+                \item Escolaridade materna: escala ordinal (0--8)
+                \item Município, estabelecimento e Robson: taxa de cesárea suavizada (treino)
             \end{itemize}
         \end{column}
         \begin{column}{0.48\textwidth}
-            \textbf{Validação}
+            \textbf{Treino e validação}
             \begin{itemize}
-                \item Hold-out estratificado (80/20)
-                \item 403.028 treino · 100.757 teste
-                \item CV 5-fold no v0 (AUC 0{,}691 $\pm$ 0{,}001)
-                \item 9 experimentos em \texttt{experiments.jsonl}
+                \item Random Forest com hiperparâmetros ajustados por busca em grade
+                \item Partição hold-out estratificada 80/20 (403 mil / 101 mil registros)
+                \item Métricas de desempenho como suporte à interpretação, não como fim em si
             \end{itemize}
         \end{column}
     \end{columns}
 \end{frame}
 
-\begin{frame}{Target encoding territorial}
-    \textbf{Problema:} município (418) e CNES (1.022) estouram one-hot --- importância diluída.
-
-    \vspace{0.4em}
-    \textbf{Solução:} substituir por taxa histórica de cesárea no treino (smoothing $m=10$):
+\begin{frame}{Codificação de alta cardinalidade e Robson}
+    \textbf{Variáveis territoriais e clínicas} (município, estabelecimento, Robson) codificadas pela taxa de cesárea suavizada no conjunto de treino:
     \[
-        \hat{p}_c = \frac{n_c \cdot \bar{y}_c + m \cdot \bar{y}}{n_c + m}
+        \hat{p}_c = \frac{n_c \cdot \bar{y}_c + m \cdot \bar{y}}{n_c + m}, \quad m = 10
     \]
+
+    \vspace{0.3em}
+    \begin{columns}[T]
+        \begin{column}{0.48\textwidth}
+            \textbf{Classificação de Robson}
+            \begin{itemize}
+                \item Instrumento recomendado pela OMS e adotado pelo Ministério da Saúde
+                \item Estratifica gestantes por paridade, histórico, apresentação e idade gestacional
+                \item Padrão em estudos populacionais com SINASC
+            \end{itemize}
+        \end{column}
+        \begin{column}{0.48\textwidth}
+            \textbf{Limitações interpretativas}
+            \begin{itemize}
+                \item Efeito contextual/ecológico, não necessariamente causal ao nível individual
+                \item Robson agrega informações clínicas já presentes no modelo
+                \item Parâmetros estimados apenas no treino, para evitar vazamento
+            \end{itemize}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Exclusão do profissional assistente ao parto}
+    \textbf{Variável considerada:} categoria do profissional que assistiu o parto (médico, enfermeiro/obstetra, etc.).
 
     \vspace{0.4em}
     \begin{columns}[T]
         \begin{column}{0.48\textwidth}
-            \textbf{Interpretação}
+            \textbf{Fundamentação da exclusão}
             \begin{itemize}
-                \item Efeito \textbf{contextual/ecológico}, não causal individual
-                \item CNES: prática da unidade onde pariu
-                \item Município: ambiente territorial mais amplo
+                \item Indicador de \textbf{processo assistencial}, registrado no momento do parto
+                \item Associado a ganho discriminativo de $\approx$5 pontos percentuais de AUC
+                \item Incompatível com a pergunta sobre determinantes anteparto do desfecho
             \end{itemize}
         \end{column}
         \begin{column}{0.48\textwidth}
-            \textbf{Cuidados}
+            \textbf{Modelo adotado}
             \begin{itemize}
-                \item Fit apenas no treino (sem vazamento)
-                \item 224 CNES com taxa 100\% (0{,}4\% dos nascimentos) --- pode inflar AUC
-                \item Não confundir com ``hospital decide sozinho''
+                \item Mantém histórico obstétrico, perfil demográfico e mobilidade territorial
+                \item Compromisso metodológico: menor AUC, maior interpretabilidade epidemiológica
+                \item Variáveis adicionais recuperam parte modesta do desempenho perdido
             \end{itemize}
         \end{column}
     \end{columns}
@@ -330,102 +350,144 @@
 
 \section{Resultados}
 
-\begin{frame}{Evolução do desempenho (hold-out 20\%)}
+\begin{frame}{Evolução do desempenho discriminativo}
     \begin{table}
         \centering
         \scriptsize
-        \begin{tabular}{llrrrr}
+        \begin{tabular}{p{4.8cm}rrp{4.2cm}}
             \toprule
-            Exp. & Versão & Feat. & AUC-ROC & F1 & Acurácia \\
+            Etapa de modelagem & AUC-ROC & F1 & Observação \\
             \midrule
-            v0 & baseline (4 vars.) & 421 & 0{,}694 & 0{,}624 & 0{,}642 \\
-            v2 & + obstétrico / social & 447 & 0{,}741 & 0{,}673 & 0{,}682 \\
-            v4 & + gestação / Kotelchuck & 453 & 0{,}748 & 0{,}678 & 0{,}686 \\
-            v5 & + assistência & 464 & 0{,}849 & 0{,}762 & 0{,}761 \\
-            v6 & + território (one-hot) & 1.435 & 0{,}878 & 0{,}793 & 0{,}792 \\
-            ablation & v6 sem município & 1.017 & 0{,}872 & 0{,}790 & 0{,}788 \\
-            \textbf{atual} & \textbf{v6 + target encode} & \textbf{53} & \textbf{0{,}883} & \textbf{0{,}800} & \textbf{0{,}797} \\
+            Modelo inicial (4 variáveis) & 0{,}694 & 0{,}624 & referência inicial \\
+            + obstétrico e social & 0{,}741 & 0{,}673 & paridade, escolaridade, raça/cor \\
+            + gestação e pré-natal & 0{,}748 & 0{,}678 & idade gestacional, Kotelchuck \\
+            + assistência ao parto & 0{,}849 & 0{,}762 & inclui profissional assistente \\
+            + territorialidade codificada & 0{,}883 & 0{,}800 & taxa por município e estabelecimento \\
+            + Robson (com assistente) & 0{,}920 & 0{,}838 & referência com variável de processo \\
+            Sem profissional assistente & 0{,}873 & 0{,}785 & modelo para interpretação \\
+            \textbf{Modelo final} & \textbf{0{,}879} & \textbf{0{,}791} & \textbf{determinantes anteparto} \\
             \bottomrule
         \end{tabular}
     \end{table}
 
     \vspace{0.3em}
     \begin{itemize}
-        \item Maior salto clínico-assistencial: v4 $\rightarrow$ v5 (\texttt{TPNASCASSI})
-        \item Target encoding: +0{,}006 AUC vs.\ v6 one-hot, com 27$\times$ menos colunas
-        \item Métricas altas \textbf{não} são o produto; servem de suporte metodológico
+        \item O salto associado ao profissional assistente evidencia variável de processo, excluída do modelo final
+        \item O modelo adotado equilibra desempenho discriminativo e plausibilidade epidemiológica
     \end{itemize}
 \end{frame}
 
-\begin{frame}{Importâncias --- modelo atual (target encoding)}
-    \textbf{Random Forest · v6 · 13 variáveis · 53 \emph{features}}
+\begin{frame}{Desempenho do modelo final}
+    \textbf{Classificador:} Random Forest · 18 variáveis · partição hold-out 80/20
 
     \vspace{0.4em}
+    \begin{columns}[T]
+        \begin{column}{0.48\textwidth}
+            \textbf{Métricas no conjunto de teste}
+            \begin{itemize}
+                \item AUC-ROC: 0{,}879
+                \item F1: 0{,}791
+                \item Acurácia: 0{,}793
+            \end{itemize}
+        \end{column}
+        \begin{column}{0.48\textwidth}
+            \textbf{Interpretação}
+            \begin{itemize}
+                \item Desempenho adequado à exploração de associações, não à predição clínica individual
+                \item Importâncias relativas (MDI) indicam ordem de magnitude, não efeito causal
+                \item Análises complementares previstas: importância por permutação e regressão logística
+            \end{itemize}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Importância relativa das variáveis}
+    \small
     \begin{table}
         \centering
-        \small
-        \begin{tabular}{lr}
+        \begin{tabular}{lrp{5.5cm}}
             \toprule
-            Determinante & Importância relativa \\
+            Determinante & Imp. & Interpretação \\
             \midrule
-            Taxa de cesárea do estabelecimento (CNES) & 23{,}0\% \\
-            Idade da mãe & 14{,}5\% \\
-            Taxa de cesárea do município de residência & 13{,}4\% \\
-            Cesáreas anteriores & 9{,}7\% \\
-            Profissional: enfermeiro/obstetra (\texttt{TPNASCASSI}) & 9{,}3\% \\
+            Taxa de cesárea por grupo Robson & 25{,}7\% & estrato clínico-obstétrico \\
+            Taxa de cesárea do estabelecimento & 22{,}5\% & prática institucional \\
+            Cesáreas anteriores & 10{,}4\% & histórico obstétrico \\
+            Taxa de cesárea do município & 7{,}2\% & contexto territorial \\
+            Idade materna & 7{,}2\% & fator demográfico \\
+            Partos vaginais anteriores & 6{,}6\% & histórico protetor relativo \\
+            Idade gestacional & 4{,}2\% & maturidade fetal \\
+            Escolaridade materna & 3{,}5\% & determinante social \\
             \bottomrule
         \end{tabular}
     \end{table}
 
-    \vspace{0.4em}
-    \begin{itemize}
-        \item Com one-hot, CNES e município \textbf{não} apareciam no top --- encoding tornou o efeito territorial legível
-        \item Idade, histórico obstétrico: coerentes com literatura
-        \item CNES $>$ município: unidade de parto pesa mais que o território agregado
-    \end{itemize}
+    \vspace{0.3em}
+    {\scriptsize Demais grupos: adequação pré-natal (Kotelchuck) 2{,}5\%; estado civil 2{,}0\%; nascimento no município de residência 1{,}5\%; raça/cor do recém-nascido 1{,}0\%}
 \end{frame}
 
-\begin{frame}{O que aprendemos nas iterações}
+\begin{frame}{Confronto com a literatura}
+    \scriptsize
+    \begin{table}
+        \centering
+        \begin{tabular}{p{3.2cm}p{3.8cm}p{5.8cm}}
+            \toprule
+            Determinante & Achado neste estudo & Literatura (SINASC / saúde materna) \\
+            \midrule
+            Cesárea anterior &
+            3$^\mathrm{o}$ lugar (10\%) &
+            Principal preditor; Robson G5 maior contribuinte nacional \cite{torres2021, bjhr2022} \\
+            Idade materna &
+            $\approx$7\% &
+            Taxa cresce com idade; pico 35+ anos \cite{torres2021, scielo2020} \\
+            Escolaridade &
+            $\approx$3{,}5\% &
+            Mais cesáreas em maior escolaridade no Brasil \cite{torres2021} \\
+            Robson / estrato clínico &
+            1$^\mathrm{o}$ lugar (26\%) &
+            Ferramenta OMS/MS; estratificação padrão em estudos populacionais \cite{torres2021, bmc2023} \\
+            Estabelecimento de saúde &
+            2$^\mathrm{o}$ lugar (23\%) &
+            Forte variação institucional; efeito hospitalar documentado \cite{bmc2023} \\
+            Partos vaginais prévios &
+            $\approx$7\% &
+            Inverso da cesárea anterior; proteção relativa \cite{scielo2020} \\
+            Pré-natal (Kotelchuck) &
+            $\approx$2{,}5\% &
+            Associação com adequação APNCU em subgrupos Robson \cite{bmc2023} \\
+            Raça/cor, sexo RN &
+            $<$2\% cada &
+            Disparidades raciais documentadas; peso menor que clínico/social \cite{torres2021} \\
+            \bottomrule
+        \end{tabular}
+    \end{table}
+\end{frame}
+
+\begin{frame}{Síntese dos achados}
     \begin{columns}[T]
         \begin{column}{0.48\textwidth}
-            \textbf{Ganhos plausíveis}
+            \textbf{Convergência com a literatura}
             \begin{itemize}
-                \item Paridade, escolaridade, gestação (v1--v4)
-                \item Kotelchuck $>$ contagem bruta de consultas
-                \item Target encoding: territorial legível e modelo enxuto
+                \item Histórico obstétrico (cesárea anterior e parto vaginal prévio)
+                \item Idade e escolaridade materna
+                \item Estratificação de Robson e heterogeneidade entre unidades de saúde
+                \item Determinantes sociais com peso inferior ao bloco clínico-territorial
             \end{itemize}
         \end{column}
         \begin{column}{0.48\textwidth}
-            \textbf{Pontos de atenção}
+            \textbf{Contribuições específicas}
             \begin{itemize}
-                \item \texttt{TPNASCASSI} infla AUC --- variável de processo?
-                \item Taxa do CNES pode capturar unidades extremas (100\% cesárea)
-                \item Associação $\neq$ causalidade individual
+                \item Recorte populacional: Bahia, 2022--2024 ($\approx$50\% de cesáreas)
+                \item Estabelecimento de saúde supera município na importância relativa
+                \item Exclusão do profissional assistente altera o ranking e a leitura causal
+                \item Mobilidade territorial (nascer onde reside): associação modesta
             \end{itemize}
         \end{column}
     \end{columns}
 
-    \vspace{0.5em}
-    \begin{alertblock}{Ablation município (one-hot v6)}
-        Remover \texttt{CODMUNRES}: $-$418 features, AUC cai apenas 0{,}006 --- sinal municipal redundante com CNES.
-    \end{alertblock}
-\end{frame}
-
-\section{Próximos passos}
-
-\begin{frame}{Continuidade da jornada}
-    \begin{enumerate}
-        \item \textbf{Ranquear municípios:} taxa observada vs.\ importância no modelo
-        \item \textbf{Revisar CNES extremos:} cap de taxa ou filtro de volume mínimo
-        \item \textbf{Separar bloco clínico} (sem CNES/\texttt{TPNASCASSI}) vs.\ bloco assistencial
-        \item \textbf{Permutation importance:} robustez das importâncias globais
-        \item \textbf{Regressão logística:} odds ratios como complemento interpretável
-        \item \textbf{Grupo de Robson} (\texttt{TPROBSON}): estratificação separada
-    \end{enumerate}
-
     \vspace{0.4em}
-    {\small 9 experimentos documentados (v0--v6 + ablations); narrativa: \emph{por que} cada variável entrou ou saiu.}
 \end{frame}
+
+\section{Perspectivas}
 
 \begin{frame}{Obrigado}
     \begin{center}

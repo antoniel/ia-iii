@@ -7,6 +7,8 @@ import pandas as pd
 from ml.columns import (
     CATEGORICAL_FEATURES,
     Col,
+    ORDINAL_FEATURES,
+    ORDINAL_MAPS,
     TARGET,
     TARGET_ENCODE_FEATURES,
     target_encode_column_name,
@@ -23,6 +25,7 @@ class FeatureEncoder:
     smoothing: float
     target_maps: dict[str, dict[str, float]] = field(default_factory=dict)
     one_hot_columns: list[str] = field(default_factory=list)
+    ordinal_fill: dict[str, float] = field(default_factory=dict)
     output_columns: list[str] = field(default_factory=list)
 
 
@@ -47,8 +50,20 @@ def _numeric_columns(feature_columns: tuple[Col, ...]) -> list[Col]:
     return [
         col
         for col in feature_columns
-        if col not in CATEGORICAL_FEATURES and col not in TARGET_ENCODE_FEATURES
+        if col not in CATEGORICAL_FEATURES
+        and col not in TARGET_ENCODE_FEATURES
+        and col not in ORDINAL_FEATURES
     ]
+
+
+def _ordinal_columns(feature_columns: tuple[Col, ...]) -> list[Col]:
+    return [col for col in feature_columns if col in ORDINAL_FEATURES]
+
+
+def encode_ordinal(series: pd.Series, col: Col) -> pd.Series:
+    mapping = ORDINAL_MAPS[col]
+    codes = series.astype(str).str.strip()
+    return codes.map(mapping)
 
 
 def _one_hot_columns(feature_columns: tuple[Col, ...]) -> list[Col]:
@@ -76,6 +91,11 @@ def fit_transform(
 
     for col in _numeric_columns(feature_columns):
         parts.append(pd.to_numeric(df[col.value], errors="coerce").rename(col.value).to_frame())
+
+    for col in _ordinal_columns(feature_columns):
+        encoded = encode_ordinal(df[col.value], col)
+        encoder.ordinal_fill[col.value] = float(encoded.median())
+        parts.append(encoded.rename(col.value).to_frame())
 
     for col in _target_encode_columns(feature_columns):
         encoder.target_maps[col.value] = _fit_target_map(df[col.value], y, global_mean, smoothing)
@@ -112,6 +132,11 @@ def transform(
 
     for col in _numeric_columns(feature_columns):
         parts.append(pd.to_numeric(df[col.value], errors="coerce").rename(col.value).to_frame())
+
+    for col in _ordinal_columns(feature_columns):
+        fill = encoder.ordinal_fill[col.value]
+        encoded = encode_ordinal(df[col.value], col).fillna(fill)
+        parts.append(encoded.rename(col.value).to_frame())
 
     for col in _target_encode_columns(feature_columns):
         encoded_name = target_encode_column_name(col)

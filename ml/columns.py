@@ -50,6 +50,7 @@ class Col(StrEnum):
     TIPO_METODO_ESTIMATIVA_GESTACIONAL = "tipo_metodo_estimativa_gestacional"
     TIPO_PROFISSIONAL_ASSISTENCIA_PARTO = "tipo_profissional_assistencia_parto"
     GRUPO_ROBSON = "grupo_robson"
+    NASCIMENTO_MESMO_MUNICIPIO_RESIDENCIA = "nascimento_mesmo_municipio_residencia"
     ANO = "ano"
     Y_CESAREA = "y_cesarea"
 
@@ -187,25 +188,71 @@ FEATURES_V6_SEM_MUNICIPIO: tuple[Col, ...] = tuple(
     col for col in FEATURES_V6 if col is not Col.CODIGO_MUNICIPIO_RESIDENCIA
 )
 
+FEATURES_V7: tuple[Col, ...] = FEATURES_V6 + (Col.GRUPO_ROBSON,)
+
+FEATURES_V7_SEM_TPNASCASSI: tuple[Col, ...] = tuple(
+    col for col in FEATURES_V7 if col is not Col.TIPO_PROFISSIONAL_ASSISTENCIA_PARTO
+)
+
+FEATURES_V8: tuple[Col, ...] = FEATURES_V7_SEM_TPNASCASSI + (
+    Col.QUANTIDADE_PARTOS_VAGINAIS_ANTERIORES,
+    Col.NASCIMENTO_MESMO_MUNICIPIO_RESIDENCIA,
+    Col.ESTADO_CIVIL_MAE,
+    Col.SEXO_RECEM_NASCIDO,
+    Col.RACA_COR_RECEM_NASCIDO,
+)
+
+DERIVED_FEATURE_COLUMNS: frozenset[str] = frozenset(
+    {Col.NASCIMENTO_MESMO_MUNICIPIO_RESIDENCIA.value}
+)
+
+# ESCMAEAGR1: escada 00–08 (dicionário SINASC); 09 ignorado; 10–12 ≈ incompleto no nível.
+ESCOLARIDADE_MAE_AGREGADA_ORDINAL: dict[str, int | None] = {
+    "00": 0,
+    "01": 1,
+    "02": 2,
+    "03": 3,
+    "04": 4,
+    "05": 5,
+    "06": 6,
+    "07": 7,
+    "08": 8,
+    "09": None,
+    "10": 1,
+    "11": 3,
+    "12": 5,
+    "": None,
+}
+
+ORDINAL_FEATURES: frozenset[Col] = frozenset({Col.ESCOLARIDADE_MAE_AGREGADA})
+
+ORDINAL_MAPS: dict[Col, dict[str, int | None]] = {
+    Col.ESCOLARIDADE_MAE_AGREGADA: ESCOLARIDADE_MAE_AGREGADA_ORDINAL,
+}
+
 CATEGORICAL_FEATURES: frozenset[Col] = frozenset(
     {
         Col.CODIGO_MUNICIPIO_RESIDENCIA,
         Col.TIPO_GRAVIDEZ,
-        Col.ESCOLARIDADE_MAE_AGREGADA,
         Col.RACA_COR_MAE,
+        Col.RACA_COR_RECEM_NASCIDO,
+        Col.ESTADO_CIVIL_MAE,
+        Col.SEXO_RECEM_NASCIDO,
         Col.INDICE_KOTELCHUCK_PRENATAL,
         Col.TIPO_APRESENTACAO_FETAL,
         Col.TIPO_PROFISSIONAL_ASSISTENCIA_PARTO,
         Col.LOCAL_NASCIMENTO,
         Col.CODIGO_ESTABELECIMENTO_SAUDE,
+        Col.GRUPO_ROBSON,
     }
 )
 
-# Alta cardinalidade → taxa de cesárea suavizada (target encoding), não one-hot.
+# Target encoding: taxa de cesárea suavizada do treino (1 coluna por feature).
 TARGET_ENCODE_FEATURES: frozenset[Col] = frozenset(
     {
         Col.CODIGO_MUNICIPIO_RESIDENCIA,
         Col.CODIGO_ESTABELECIMENTO_SAUDE,
+        Col.GRUPO_ROBSON,
     }
 )
 

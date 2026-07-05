@@ -33,6 +33,8 @@ class ExperimentRecord:
     holdout_metrics: dict[str, float] | None = None
     cv_metrics_std: dict[str, float] | None = None
     cv_fold_metrics: list[dict[str, float]] | None = None
+    tune_cv_score: float | None = None
+    tune_best_params: dict[str, Any] | None = None
 
 
 def _read_records(path: Path) -> list[dict[str, Any]]:
