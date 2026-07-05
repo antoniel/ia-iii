@@ -14,10 +14,10 @@
 \setbeamertemplate{itemize items}[circle]
 \graphicspath{{imgs/}{./imgs/}}
 
-\author[Autor]{\textbf{Nome do Autor}}
-\title{Título do Trabalho}
-\subtitle{Subtítulo ou disciplina}
-\institute{Inteligência Artificial}
+\author[Antoniel Magalhães]{\textbf{Antoniel Magalhães}}
+\title{Determinantes de parto cesáreo na Bahia}
+\subtitle{Aprendizado supervisionado com SINASC · IA III}
+\institute{Universidade Federal da Bahia}
 \date{\today}
 
 \begin{document}
@@ -30,44 +30,111 @@
     \tableofcontents
 \end{frame}
 
-\section{Introdução}
+\section{Problema}
 
-\begin{frame}{Introdução}
+\begin{frame}{Problema}
     \begin{block}{Pergunta}
-        Qual é a pergunta central do trabalho?
+        Quais fatores estão associados ao parto cesáreo na Bahia e como isso varia entre municípios?
     \end{block}
 
     \begin{itemize}
-        \item Contexto
-        \item Objetivo
-        \item Contribuição
+        \item Base: SINASC (DATASUS) — Declarações de Nascidos Vivos
+        \item Recorte: Bahia, 2022--2024
+        \item Alvo: \texttt{PARTO} (vaginal vs.\ cesárea)
     \end{itemize}
 \end{frame}
 
-\section{Metodologia}
+\section{Pré-processamento}
 
-\begin{frame}{Metodologia}
-    \begin{itemize}
-        \item Base de dados
-        \item Pré-processamento
-        \item Modelo
-        \item Validação
-    \end{itemize}
+\begin{frame}{Pré-processamento — fontes}
+    \textbf{Três arquivos raw} (\texttt{data/raw/}), um por ano:
+
+    \vspace{0.6em}
+    \begin{table}
+        \centering
+        \begin{tabular}{lrl}
+            \toprule
+            Arquivo & Registros & Ano \\
+            \midrule
+            \texttt{sinasc\_ba\_2022.parquet} & 173.824 & 2022 \\
+            \texttt{sinasc\_ba\_2023.parquet} & 170.314 & 2023 \\
+            \texttt{sinasc\_ba\_2024.parquet} & 160.002 & 2024 \\
+            \midrule
+            \textbf{Total (3 datasources)} & \textbf{504.140} & \\
+            \bottomrule
+        \end{tabular}
+    \end{table}
+
+    \vspace{0.4em}
+    {\small Pipeline: \texttt{ml/preprocess.py} $\rightarrow$ \texttt{sinasc\_ba\_unified.parquet}}
 \end{frame}
 
-\section{Resultados}
+\begin{frame}{Pré-processamento — rótulo \texttt{PARTO}}
+    \textbf{Primeira limpeza:} manter apenas classes válidas do alvo.
 
-\begin{frame}{Resultados}
-    % figuras, tabelas, métricas
+    \vspace{0.4em}
+    \begin{columns}[T]
+        \begin{column}{0.48\textwidth}
+            \textbf{Códigos SINASC}
+            \begin{itemize}
+                \item \texttt{1} — parto vaginal
+                \item \texttt{2} — cesárea
+                \item \texttt{9} — ignorado
+                \item vazio — registro sem rótulo
+            \end{itemize}
+        \end{column}
+        \begin{column}{0.48\textwidth}
+            \textbf{Regra (\texttt{filter\_valid\_parto})}
+            \begin{itemize}
+                \item \textcolor{green!50!black}{Manter} \texttt{1} e \texttt{2}
+                \item \textcolor{red!70!black}{Remover} \texttt{9}, vazios e demais inválidos
+            \end{itemize}
+        \end{column}
+    \end{columns}
+
+    \vspace{0.6em}
+    \begin{table}
+        \centering
+        \small
+        \begin{tabular}{rrrrrrr}
+            \toprule
+            Ano & Total & Vaginal & Cesárea & Ignorado & Vazio & Removidos \\
+            \midrule
+            2022 & 173.824 & 90.536 & 83.141 & 16 & 131 & 147 \\
+            2023 & 170.314 & 85.189 & 85.003 & 8 & 114 & 122 \\
+            2024 & 160.002 & 75.742 & 84.174 & 5 & 81 & 86 \\
+            \midrule
+            \textbf{Total} & \textbf{504.140} & 251.467 & 252.318 & 29 & 326 & \textbf{355} \\
+            \bottomrule
+        \end{tabular}
+    \end{table}
 \end{frame}
 
-\section{Conclusão}
+\begin{frame}{Pré-processamento — base unificada}
+    \begin{block}{Após unificação e limpeza de rótulos}
+        \centering
+        \Large 503.785 registros utilizáveis
+    \end{block}
 
-\begin{frame}{Conclusão}
+    \vspace{0.6em}
+    \begin{table}
+        \centering
+        \begin{tabular}{lr}
+            \toprule
+            Etapa & Registros \\
+            \midrule
+            Raw (3 anos) & 504.140 \\
+            Removidos (ignorados + vazios) & $-$355 (0{,}07\%) \\
+            \midrule
+            \textbf{Base unificada} & \textbf{503.785} \\
+            \bottomrule
+        \end{tabular}
+    \end{table}
+
+    \vspace{0.4em}
     \begin{itemize}
-        \item Principais achados
-        \item Limitações
-        \item Trabalhos futuros
+        \item Coluna \texttt{y\_cesarea}: \texttt{1} = cesárea, \texttt{0} = vaginal
+        \item Balanceamento: $\approx$ 50{,}1\% cesárea · 49{,}9\% vaginal
     \end{itemize}
 \end{frame}
 
