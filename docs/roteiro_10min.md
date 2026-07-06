@@ -141,13 +141,13 @@ A leitura principal é que cesárea não aparece só como resultado de caracter�
 
 ## Slide 18: Confronto com a literatura, 1 min
 
-Quando comparamos com a literatura, os achados são coerentes — e agora com números concretos.
+Quando confrontamos esses achados com a literatura brasileira, eles se sustentam.
 
-A cesárea anterior é o maior efeito individual descrito: Shrivastava e Sohn, em 2025, com dados do SINASC, relatam odds ratio de 6,05. A idade materna aparece com risco crescendo cerca de 5 por cento por ano. A escolaridade mais alta se associa a mais cesáreas no Brasil, com odds ratio de 2,24 para o ensino superior. O grupo de Robson é o padrão da OMS, e o grupo 5 sozinho responde por cerca de 30,8 por cento das cesáreas no país. E o estabelecimento de saúde tem forte efeito institucional: a literatura mostra 42,9 por cento de cesárea no setor público contra 87,9 por cento no privado — exatamente o tipo de heterogeneidade que nosso modelo capturou.
+A cesárea anterior, por exemplo, é reconhecida como o fator individual mais forte: um estudo nacional recente estimou que ela multiplica por seis a chance de cesárea. A idade e a escolaridade seguem o padrão já descrito no Brasil, de mais cesárea conforme aumentam. E o efeito institucional que encontramos é bem documentado: na literatura, a taxa de cesárea salta de cerca de 43 por cento no setor público para quase 88 por cento no privado. É o mesmo sinal que a nossa variável de estabelecimento capturou.
 
-Vale destacar um ponto onde a literatura confirma até um resultado fraco nosso: a adequação do pré-natal, medida pelo índice de Kotelchuck, pesou pouco no modelo, e Piva e colegas, em 2023, também não encontraram associação significativa. Ou seja, concordamos com a literatura tanto nos achados fortes quanto no que não tem efeito.
+E tem um ponto que vale destacar: onde o nosso modelo deu pouco peso, a literatura também deu. A adequação do pré-natal, medida pelo índice de Kotelchuck, pesou pouco para nós, e um estudo de 2023 também não encontrou associação significativa. Ou seja, concordamos com a evidência tanto no que tem efeito quanto no que não tem.
 
-Então nosso objetivo aqui não é dizer que o modelo descobriu causalidade. Queremos mostrar que os padrões aprendidos pelo modelo são plausíveis e compatíveis com evidências epidemiológicas.
+Por isso, a mensagem aqui não é que o modelo descobriu causa e efeito. É que os padrões que ele aprendeu são plausíveis e compatíveis com o que a epidemiologia já mostra.
 
 ## Slide 19: Síntese dos achados, 1 min
 
